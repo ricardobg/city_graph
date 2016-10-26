@@ -1,0 +1,16 @@
+{
+  "name": "city_graph",
+  "version": "1.0.0",
+  "description": "Generate a graph of cities",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ricardo Boccoli Gallego <ricardo.gallego93@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "geode": "^1.0.0",
+    "googlemaps": "^1.11.1",
+    "random-js": "^1.0.8"
+  }
+}
