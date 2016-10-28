@@ -8,8 +8,8 @@ var fs = require('fs');
 //Parameters
 //TODO: Ask for them
 var mapName = 'SantaCatarina';
-var nCities = 20;
-var nRoutes = 40;
+var nCities = 30;
+var nRoutes = 36;
 var countryCode  = 'BR';
 var stateCode = 'SC';
 var outputFile = "test.txt";
@@ -46,17 +46,22 @@ geo.search({country: countryCode, q: stateCode, fcode: 'ADM1', style: 'FULL'}, f
     var adminCode = statesResult.geonames[0].adminCode1;
     //Search for cities
     console.log("Loading " + nCities + " cities...");
-    geo.search({country :countryCode, adminCode1: adminCode, maxRows: nCities, featureClass: 'P'}, function(err, results) {
+    geo.search({country :countryCode, adminCode1: adminCode, maxRows: nCities, featureClass: 'P'}, function(err, rawResults) {
         console.log("Loaded cities!");
-        if (results.totalResultsCount < nCities) {
-            console.log("Error: Couldn't find " + nCities + " cities (only " + results.totalResultsCount + ")");
+        if (rawResults.totalResultsCount < nCities) {
+            console.log("Error: Couldn't find " + nCities + " cities (only " + rawResults.totalResultsCount + ")");
             return;
         }
+        //Sort results using coordinates
+        var results = rawResults.geonames.sort((a, b) => {
+            return (a.lng - b.lng) + (a.lat - b.lat);
+        });
+
         // Get indices
         var indices = generateRoutesIndex(nCities, nRoutes);
         // Routes
-        var from = indices.map((el) => { return results.geonames[el.from]; });
-        var to = indices.map((el) => { return results.geonames[el.to]; });
+        var from = indices.map((el) => { return results[el.from]; });
+        var to = indices.map((el) => { return results[el.to]; });
         console.log("Loading " + nRoutes + " routes...");
         getRoutesDistance(from, to,
             (dists) => {
@@ -68,15 +73,15 @@ geo.search({country: countryCode, q: stateCode, fcode: 'ADM1', style: 'FULL'}, f
                 output += nCities + "\n";
                 var i;
                 for ( i = 0; i < nCities; i++) {
-                    var city = results.geonames[i]; 
+                    var city = results[i]; 
                     output += city.toponymName.split(" ").join("_") + " " + 
                                 city.lng + " " + city.lat + "\n";
                 }
                 // Write routes
                 output += nRoutes + "\n";
                 for (i = 0; i < nRoutes; i++) {
-                    var cityName1 = results.geonames[indices[i].from].toponymName.split(" ").join("_");
-                    var cityName2 = results.geonames[indices[i].to].toponymName.split(" ").join("_");
+                    var cityName1 = results[indices[i].from].toponymName.split(" ").join("_");
+                    var cityName2 = results[indices[i].to].toponymName.split(" ").join("_");
                     output += cityName1 + " " + cityName2 + " " + dists[i] + "\n";
                 }
                 console.log(output);
