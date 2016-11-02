@@ -7,12 +7,12 @@ var fs = require('fs');
 
 //Parameters
 //TODO: Ask for them
-var mapName = 'SantaCatarina';
+var mapName = 'Uruguay';
 var nCities = 30;
-var nRoutes = 36;
-var countryCode  = 'BR';
-var stateCode = 'SC';
-var outputFile = "test.txt";
+var nRoutes = 40;
+var countryCode  = 'UY';
+var stateCode = null;
+var outputFile = "uruguay.txt";
 
 
 if (process.argv.length != 3) {
@@ -34,70 +34,77 @@ var publicConfig = {
 var gmAPI = new GoogleMapsAPI(publicConfig);
 
 
-//First: get admin code
-geo.search({country: countryCode, q: stateCode, fcode: 'ADM1', style: 'FULL'}, function(err, statesResult){
-    if (err)
-        return;
-    if (statesResult.totalResultsCount != 1) {
-        console.log("Error: Couldn't find state geoname code!");
-        return;
-    }
-
-    var adminCode = statesResult.geonames[0].adminCode1;
-    //Search for cities
-    console.log("Loading " + nCities + " cities...");
-    geo.search({country :countryCode, adminCode1: adminCode, maxRows: nCities, featureClass: 'P'}, function(err, rawResults) {
-        console.log("Loaded cities!");
-        if (rawResults.totalResultsCount < nCities) {
-            console.log("Error: Couldn't find " + nCities + " cities (only " + rawResults.totalResultsCount + ")");
+if (stateCode !== null) {
+    //First: get admin code
+    geo.search({country: countryCode, q: stateCode, fcode: 'ADM1', style: 'FULL'}, function(err, statesResult){
+        if (err)
+            return;
+        if (statesResult.totalResultsCount != 1) {
+            console.log("Error: Couldn't find state geoname code!");
             return;
         }
-        //Sort results using coordinates
-        var results = rawResults.geonames.sort((a, b) => {
-            return (a.lng - b.lng) + (a.lat - b.lat);
-        });
 
-        // Get indices
-        var indices = generateRoutesIndex(nCities, nRoutes);
-        // Routes
-        var from = indices.map((el) => { return results[el.from]; });
-        var to = indices.map((el) => { return results[el.to]; });
-        console.log("Loading " + nRoutes + " routes...");
-        getRoutesDistance(from, to,
-            (dists) => {
-                var output = "";
-                // Map file
-                output += mapName + "\n";
-                
-                // Write cities
-                output += nCities + "\n";
-                var i;
-                for ( i = 0; i < nCities; i++) {
-                    var city = results[i]; 
-                    output += city.toponymName.split(" ").join("_") + " " + 
-                                city.lng + " " + city.lat + "\n";
-                }
-                // Write routes
-                output += nRoutes + "\n";
-                for (i = 0; i < nRoutes; i++) {
-                    var cityName1 = results[indices[i].from].toponymName.split(" ").join("_");
-                    var cityName2 = results[indices[i].to].toponymName.split(" ").join("_");
-                    output += cityName1 + " " + cityName2 + " " + dists[i] + "\n";
-                }
-                console.log(output);
-                fs.writeFile(outputFile, output, (err) => {
-                    if (err) {
-                        console.log("Error: Couldn't write in file " + outputFile);
-                        console.log(err);
-                    }
-                    else {
-                        console.log("Done! File " + outputFile + " generated!");
-                    }
-                });
-            });
+        var adminCode = statesResult.geonames[0].adminCode1;
+        //Search for cities
+        console.log("Loading " + nCities + " cities...");
+        geo.search({country :countryCode, adminCode1: adminCode, maxRows: nCities, featureClass: 'P'}, treatCitiesSearchResult);
     });
-});
+}
+else {
+    console.log("Loading " + nCities + " cities...");
+    geo.search({country: countryCode, maxRows: nCities, featureClass: 'P'}, treatCitiesSearchResult);
+}
 
+function treatCitiesSearchResult(err, rawResults) {
+    console.log("Loaded cities!");
+    if (rawResults.totalResultsCount < nCities) {
+        console.log("Error: Couldn't find " + nCities + " cities (only " + rawResults.totalResultsCount + ")");
+        return;
+    }
+    //Sort results using coordinates
+    var results = rawResults.geonames.sort((a, b) => {
+        return (a.lng - b.lng) + (a.lat - b.lat);
+    });
+
+    // Get indices
+    var indices = generateRoutesIndex(nCities, nRoutes);
+    // Routes
+    var from = indices.map((el) => { return results[el.from]; });
+    var to = indices.map((el) => { return results[el.to]; });
+    console.log("Loading " + nRoutes + " routes...");
+    getRoutesDistance(from, to,
+        (dists) => {
+            var output = "";
+            // Map file
+            output += mapName + "\n";
+            
+            // Write cities
+            output += nCities + "\n";
+            var i;
+            for ( i = 0; i < nCities; i++) {
+                var city = results[i]; 
+                output += city.toponymName.split(" ").join("_") + " " + 
+                            city.lng + " " + city.lat + "\n";
+            }
+            // Write routes
+            output += nRoutes + "\n";
+            for (i = 0; i < nRoutes; i++) {
+                var cityName1 = results[indices[i].from].toponymName.split(" ").join("_");
+                var cityName2 = results[indices[i].to].toponymName.split(" ").join("_");
+                output += cityName1 + " " + cityName2 + " " + dists[i] + "\n";
+            }
+            console.log(output);
+            fs.writeFile(outputFile, output, (err) => {
+                if (err) {
+                    console.log("Error: Couldn't write in file " + outputFile);
+                    console.log(err);
+                }
+                else {
+                    console.log("Done! File " + outputFile + " generated!");
+                }
+            });
+        });
+}
 
 
 var maxPlaces = 1; // Max places per request (1 reduces the wasted amount of limit)
