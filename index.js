@@ -81,10 +81,13 @@ function treatCitiesSearchResult(err, rawResults) {
             // Write cities
             output += nCities + "\n";
             var i;
+            var cmpLng = results[0].lng;
+            var cmpLat = results[0].lat;
             for ( i = 0; i < nCities; i++) {
                 var city = results[i]; 
                 output += city.toponymName.split(" ").join("_") + " " + 
-                            city.lng + " " + city.lat + "\n";
+                            (Math.round(100000 * (city.lng - cmpLng)) / 100000) + " " + 
+                            (Math.round(100000 * (city.lat - cmpLat)) / 100000) + "\n";
             }
             // Write routes
             output += nRoutes + "\n";
